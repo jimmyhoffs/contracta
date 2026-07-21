@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build"
+    "desktop:build": "tauri build",
+    "desktop:build:windows": "tauri build --target x86_64-pc-windows-gnu --bundles nsis"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

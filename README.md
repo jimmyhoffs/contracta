@@ -44,3 +44,17 @@ npm run desktop:build   # produce installers in src-tauri/target/release/bundle/
 ```
 
 macOS/Windows need their platform's usual native toolchain (Xcode Command Line Tools / MSVC Build Tools) instead of the apt packages above — see the [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/).
+
+### Windows build
+
+Building on an actual Windows machine (or a Windows CI runner) is the normal path — install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#windows) there and run `npm run desktop:build`.
+
+This repo is also set up to **cross-compile from Linux** for the cases where that's all you have:
+
+```bash
+rustup target add x86_64-pc-windows-gnu
+sudo apt install -y mingw-w64 nsis
+npm run desktop:build:windows
+```
+
+`src-tauri/.cargo/config.toml` points cargo at the mingw-w64 linker for the `x86_64-pc-windows-gnu` target. This produces a real `app.exe` (`src-tauri/target/x86_64-pc-windows-gnu/release/app.exe`); wrapping it into a signed NSIS installer additionally needs a helper DLL that Tauri fetches from `tauri-apps/nsis-tauri-utils` on GitHub at build time — if that host isn't reachable from your build environment, you'll get a working `.exe` but the bundling step will fail, and you can distribute the raw `.exe` directly or run the same command somewhere with normal GitHub access to get the packaged installer.
