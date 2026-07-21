@@ -24,3 +24,23 @@ Open the printed local URL on your phone or in a mobile-width browser window. Th
 npm run build   # production build
 npm run lint    # oxlint
 ```
+
+## Desktop app
+
+The same app also runs as a native desktop app via [Tauri](https://tauri.app) — a real installable window (`.deb`/`.AppImage`/`.rpm` on Linux, `.dmg` on macOS, `.msi`/`.exe` on Windows), not just a browser tab. It shares the same code and local IndexedDB data as the web app; the window defaults to the app's mobile-shaped layout (480×880, resizable).
+
+First-time setup (Linux):
+
+```bash
+sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev pkg-config
+```
+
+Then:
+
+```bash
+npm run desktop:dev     # launch in a dev window with hot reload
+npm run desktop:build   # produce installers in src-tauri/target/release/bundle/
+```
+
+macOS/Windows need their platform's usual native toolchain (Xcode Command Line Tools / MSVC Build Tools) instead of the apt packages above — see the [Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/).
