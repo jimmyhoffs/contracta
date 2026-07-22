@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#131317">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Roof Measure</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23131317'/><path d='M20 55 L50 25 L80 55' stroke='%23E8833A' stroke-width='8' fill='none' stroke-linecap='round'/><rect x='30' y='55' width='40' height='25' fill='%23E8833A'/></svg>">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: #131317; color: #e4e4e7; font-family: system-ui, sans-serif; padding: 10px; overscroll-behavior: none; }
+  button { font-family: inherit; cursor: pointer; }
+  .row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .btn { flex: 1; padding: 10px 0; border-radius: 10px; border: 1px solid #3a3a42; background: #232329; color: #d4d4d8; font-size: 13px; font-weight: 600; }
+  .btn:disabled { opacity: 0.4; }
+  .btn.accent { border: 1px solid #E8833A; background: #2d2418; color: #E8833A; }
+  .toolbtn { flex: 1; min-width: 0; padding: 10px 2px; border-radius: 10px; border: 1px solid #3a3a42; background: #232329; color: #d4d4d8; font-size: 11px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .toolbtn.active { border: 2px solid #E8833A; background: #2d2418; color: #E8833A; }
+  .toolbtn span { font-size: 18px; }
+  .toolbtn:disabled { opacity: 0.4; }
+  .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #3a3a42; flex-shrink: 0; padding: 0; }
+  .swatch.active { border: 3px solid #E8833A; }
+  select, input[type=text], input[type=number] { background: #1e1e24; color: #e4e4e7; border: 1px solid #3a3a42; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-family: inherit; }
+  #status { font-size: 12px; color: #E8833A; min-height: 30px; margin-bottom: 4px; line-height: 1.3; }
+  #canvasWrap { border-radius: 12px; overflow: hidden; border: 1px solid #3a3a42; }
+  canvas { display: block; touch-action: none; }
+  .bigbtn { padding: 16px 0; border-radius: 12px; border: none; background: #E8833A; color: #131317; font-size: 16px; font-weight: 700; }
+  .bigbtn:disabled { opacity: 0.4; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; padding: 16px; z-index: 50; display: none; }
+  .hint { font-size: 11px; color: #6a6a72; margin-top: 6px; line-height: 1.4; }
+  #summary { margin-top: 10px; background: #1e1e24; border: 1px solid #3a3a42; border-radius: 12px; padding: 12px 14px; font-size: 13px; display: none; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .statlabel { color: #8a8a92; font-size: 11px; }
+  .statval { font-size: 17px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="row" style="align-items:center;">
+  <span style="font-weight:700;color:#E8833A;font-size:15px;white-space:nowrap;">ROOF MEASURE</span>
+  <input type="text" id="jobName" placeholder="Job / address" style="flex:1;min-width:0;font-size:13px;">
+</div>
+
+<div class="row">
+  <button class="btn" id="uploadBtn">📁 Upload</button>
+  <input type="file" id="fileInput" accept="image/*" style="display:none;">
+  <button class="btn" id="undoBtn" disabled>↩ Undo</button>
+  <button class="btn" id="totalsBtn" disabled>Σ Totals</button>
+  <button class="btn accent" id="saveBtn" disabled>💾 Save</button>
+</div>
+
+<div class="row">
+  <button class="toolbtn" data-tool="calibrate" disabled><span>📏</span>Scale</button>
+  <button class="toolbtn" data-tool="line" disabled><span>📐</span>Line</button>
+  <button class="toolbtn" data-tool="area" disabled><span>⬠</span>Area</button>
+  <button class="toolbtn" data-tool="text" disabled><span>🔤</span>Text</button>
+  <button class="toolbtn" data-tool="erase" disabled><span>🧹</span>Erase</button>
+</div>
+
+<div class="row" style="align-items:center;font-size:12px;">
+  <button class="swatch active" data-color="#E24B4A" style="background:#E24B4A;"></button>
+  <button class="swatch" data-color="#378ADD" style="background:#378ADD;"></button>
+  <button class="swatch" data-color="#63B322" style="background:#63B322;"></button>
+  <button class="swatch" data-color="#F2C037" style="background:#F2C037;"></button>
+  <button class="swatch" data-color="#FFFFFF" style="background:#FFFFFF;"></button>
+  <select id="unitSel" style="padding:5px 6px;font-size:12px;"><option>ft</option><option>m</option></select>
+  <select id="pitchSel" style="padding:5px 6px;font-size:12px;flex:1;"></select>
+  <span id="scaleStatus" style="color:#8a8a92;white-space:nowrap;">no scale</span>
+</div>
+
+<div id="status">Tap Upload to load an aerial photo.</div>
+
+<div id="canvasWrap"><canvas id="cv"></canvas></div>
+
+<div class="row" style="margin-top:8px;">
+  <button class="bigbtn" id="markBtn" style="flex:2;" disabled>➕ Mark point</button>
+  <button class="bigbtn" id="closeBtn" style="flex:1;background:#1d2a14;color:#63B322;border:1px solid #63B322;display:none;">✓ Close</button>
+  <button class="btn" id="cancelBtn" style="flex:1;padding:16px 0;font-size:15px;display:none;">✕ Cancel</button>
+  <button class="btn" id="lastBtn" style="flex:1;padding:16px 0;font-size:15px;display:none;">⌫ Last</button>
+</div>
+
+<div class="hint">Drag with one finger to aim the crosshair · pinch with two fingers to zoom · tap Mark point to drop a point at the crosshair</div>
+
+<div id="summary">
+  <div style="font-weight:700;margin-bottom:8px;color:#E8833A;">TOTALS</div>
+  <div class="grid2" id="summaryGrid"></div>
+</div>
+
+<div class="sheet" id="calibSheet" style="background:#2d2418;border-top:2px solid #E8833A;">
+  <div style="font-size:14px;margin-bottom:10px;">Real-world length of that line:</div>
+  <div class="row">
+    <input type="number" id="calibVal" inputmode="decimal" value="10" min="0.01" step="0.01" style="flex:1;font-size:16px;padding:12px;">
+    <select id="calibUnit"><option>ft</option><option>m</option></select>
+  </div>
+  <div class="row" style="margin-top:10px;">
+    <button class="bigbtn" id="calibOk" style="flex:2;padding:14px 0;font-size:15px;">Lock scale</button>
+    <button class="btn" id="calibCancel" style="flex:1;padding:14px 0;font-size:15px;">Cancel</button>
+  </div>
+</div>
+
+<div class="sheet" id="textSheet" style="background:#1e1e24;border-top:1px solid #3a3a42;">
+  <input type="text" id="textVal" placeholder="Label — e.g. valley, gutter run" style="width:100%;font-size:16px;padding:12px;">
+  <div class="row" style="margin-top:10px;">
+    <button class="bigbtn" id="textOk" style="flex:2;padding:14px 0;font-size:15px;">Place label</button>
+    <button class="btn" id="textCancel" style="flex:1;padding:14px 0;font-size:15px;">Cancel</button>
+  </div>
+</div>
+
+<script>
+const PITCH_FACTORS = { "Flat":1.0,"2/12":1.014,"3/12":1.031,"4/12":1.054,"5/12":1.083,"6/12":1.118,"7/12":1.158,"8/12":1.202,"9/12":1.25,"10/12":1.302,"12/12":1.414 };
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+
+const EMBEDDED = window.parent !== window;
+
+let img=null, imgW=0, imgH=0, scale=null, unit='ft', tool=null, color='#E24B4A';
+let items=[], history=[], pending=[], zoom=1, pan={x:0,y:0}, crosshair=null, calibPts=null, textPt=null;
+
+const pitchSel = $('pitchSel');
+Object.keys(PITCH_FACTORS).forEach(p=>{
+  const o=document.createElement('option'); o.value=p; o.textContent = p==='Flat'?'Pitch: flat':'Pitch '+p; pitchSel.appendChild(o);
+});
+
+// When embedded in the Contractor Assistant app, accept a prefilled job name from the host page.
+window.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'roof-measure:init') {
+    if (e.data.jobName) $('jobName').value = e.data.jobName;
+  }
+});
+
+function setStatus(t){ $('status').textContent=t; }
+function fmt(v){ return v>=100 ? v.toFixed(0) : v.toFixed(1); }
+function dist(a,b){ return Math.hypot(b.x-a.x, b.y-a.y); }
+function polyArea(pts){ let s=0; for(let i=0;i<pts.length;i++){const j=(i+1)%pts.length; s+=pts[i].x*pts[j].y-pts[j].x*pts[i].y;} return Math.abs(s/2); }
+function polyPerim(pts){ let p=0; for(let i=0;i<pts.length;i++) p+=dist(pts[i],pts[(i+1)%pts.length]); return p; }
+function pushHistory(){ history.push(JSON.parse(JSON.stringify(items))); if(history.length>30) history.shift(); $('undoBtn').disabled=false; }
+
+function canvasSize(){
+  const w = $('canvasWrap').clientWidth;
+  const h = Math.round(window.innerHeight*0.48);
+  const dpr = window.devicePixelRatio||1;
+  cv.width=w*dpr; cv.height=h*dpr;
+  cv.style.width=w+'px'; cv.style.height=h+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {w,h};
+}
+
+function updateCrosshair(){
+  const {w,h} = {w:cv.clientWidth,h:cv.clientHeight};
+  crosshair = { x:(w/2-pan.x)/zoom, y:(h/2-pan.y)/zoom };
+}
+
+function render(){
+  const {w,h} = canvasSize();
+  ctx.fillStyle='#1a1a1e'; ctx.fillRect(0,0,w,h);
+  if(!img){
+    ctx.fillStyle='#666'; ctx.font='15px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('Tap Upload to load a photo', w/2, h/2); ctx.textAlign='left';
+    return;
+  }
+  ctx.save();
+  ctx.translate(pan.x,pan.y); ctx.scale(zoom,zoom);
+  ctx.drawImage(img,0,0);
+  const lw=3/zoom;
+  const drawLabel=(text,x,y,clr)=>{
+    const fs=14/zoom;
+    ctx.font='bold '+fs+'px sans-serif';
+    const tw=ctx.measureText(text).width;
+    ctx.fillStyle='rgba(0,0,0,0.75)';
+    ctx.fillRect(x-tw/2-4/zoom, y-fs-3/zoom, tw+8/zoom, fs+6/zoom);
+    ctx.fillStyle = clr==='#111111'?'#fff':clr;
+    ctx.fillText(text, x-tw/2, y-2/zoom);
+  };
+  items.forEach(it=>{
+    if(it.type==='line'){
+      ctx.strokeStyle=it.color; ctx.lineWidth=lw;
+      ctx.beginPath(); ctx.moveTo(it.x1,it.y1); ctx.lineTo(it.x2,it.y2); ctx.stroke();
+      ctx.fillStyle=it.color;
+      [[it.x1,it.y1],[it.x2,it.y2]].forEach(([x,y])=>{ctx.beginPath();ctx.arc(x,y,4/zoom,0,Math.PI*2);ctx.fill();});
+      if(it.label) drawLabel(it.label,(it.x1+it.x2)/2,(it.y1+it.y2)/2-8/zoom,it.color);
+    } else if(it.type==='area'){
+      ctx.strokeStyle=it.color; ctx.lineWidth=lw; ctx.fillStyle=it.color+'33';
+      ctx.beginPath();
+      it.pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      if(it.label){
+        const cx=it.pts.reduce((s,p)=>s+p.x,0)/it.pts.length;
+        const cy=it.pts.reduce((s,p)=>s+p.y,0)/it.pts.length;
+        drawLabel(it.label,cx,cy,it.color);
+      }
+    } else if(it.type==='text'){
+      const fs=16/zoom;
+      ctx.font='bold '+fs+'px sans-serif';
+      const tw=ctx.measureText(it.text).width;
+      ctx.fillStyle='rgba(0,0,0,0.75)';
+      ctx.fillRect(it.x-3/zoom,it.y-fs,tw+6/zoom,fs+5/zoom);
+      ctx.fillStyle=it.color==='#111111'?'#fff':it.color;
+      ctx.fillText(it.text,it.x,it.y);
+    }
+  });
+  if(pending.length){
+    ctx.strokeStyle='#00E5FF'; ctx.fillStyle='#00E5FF'; ctx.lineWidth=2/zoom;
+    ctx.setLineDash([6/zoom,4/zoom]);
+    ctx.beginPath();
+    pending.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+    if(crosshair) ctx.lineTo(crosshair.x,crosshair.y);
+    ctx.stroke(); ctx.setLineDash([]);
+    pending.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5/zoom,0,Math.PI*2);ctx.fill();});
+    if(crosshair && scale && (tool==='line'||tool==='calibrate') && pending.length===1){
+      drawLabel(fmt(dist(pending[0],crosshair)*scale)+' '+unit, crosshair.x, crosshair.y-18/zoom, '#00E5FF');
+    }
+  }
+  ctx.restore();
+  // crosshair reticle
+  const cx=w/2, cy=h/2;
+  ctx.strokeStyle='#00E5FF'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx-18,cy);ctx.lineTo(cx-5,cy);
+  ctx.moveTo(cx+5,cy);ctx.lineTo(cx+18,cy);
+  ctx.moveTo(cx,cy-18);ctx.lineTo(cx,cy-5);
+  ctx.moveTo(cx,cy+5);ctx.lineTo(cx,cy+18);
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.stroke();
+}
+
+// ---- upload ----
+$('uploadBtn').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const im=new Image();
+    im.onload=()=>{
+      img=im; imgW=im.width; imgH=im.height;
+      items=[]; history=[]; pending=[]; scale=null;
+      const w=cv.clientWidth||$('canvasWrap').clientWidth, h=Math.round(window.innerHeight*0.48);
+      zoom=Math.min(w/imgW,h/imgH);
+      pan={x:(w-imgW*zoom)/2, y:(h-imgH*zoom)/2};
+      updateCrosshair();
+      document.querySelectorAll('.toolbtn').forEach(b=>b.disabled=false);
+      ['totalsBtn','saveBtn','markBtn'].forEach(id=>$(id).disabled=false);
+      setTool('calibrate');
+      setStatus('Set scale: aim the crosshair at one end of a known distance, tap ➕ Mark point.');
+      render();
+    };
+    im.src=ev.target.result;
+  };
+  r.readAsDataURL(f);
+};
+
+// ---- tools ----
+function setTool(t){
+  tool=t; pending=[];
+  document.querySelectorAll('.toolbtn').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));
+  updateActionButtons();
+  const msgs={calibrate:'Aim at one end of a known distance, tap Mark point.',line:'Aim at the start point, tap Mark point.',area:'Aim at each corner and Mark point. Close when done (3+).',text:'Aim where the label goes, tap Mark point.',erase:'Aim near an item, tap Mark point to delete it.'};
+  setStatus(msgs[t]||'');
+  render();
+}
+document.querySelectorAll('.toolbtn').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+
+document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>{
+  color=b.dataset.color;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('active',s===b));
+});
+
+$('unitSel').onchange=e=>{unit=e.target.value;};
+$('undoBtn').onclick=()=>{
+  if(history.length){ items=history.pop(); $('undoBtn').disabled=!history.length; render(); updateSummary(); }
+};
+$('totalsBtn').onclick=()=>{
+  const s=$('summary');
+  s.style.display = s.style.display==='block'?'none':'block';
+  updateSummary();
+};
+
+function updateActionButtons(){
+  $('closeBtn').style.display = tool==='area' ? 'block':'none';
+  $('closeBtn').disabled = pending.length<3;
+  $('lastBtn').style.display = (tool==='area'&&pending.length>0)?'block':'none';
+  $('cancelBtn').style.display = (tool!=='area'&&pending.length>0)?'block':'none';
+}
+
+// ---- touch pan/zoom ----
+let tstate={mode:null};
+cv.addEventListener('touchstart',e=>{
+  if(!img) return;
+  if(e.touches.length===1){
+    tstate={mode:'pan',sx:e.touches[0].clientX,sy:e.touches[0].clientY,sp:{...pan}};
+  } else if(e.touches.length===2){
+    const [a,b]=e.touches;
+    tstate={mode:'pinch',sd:Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY),sz:zoom,sp:{...pan},mx:(a.clientX+b.clientX)/2,my:(a.clientY+b.clientY)/2};
+  }
+},{passive:true});
+cv.addEventListener('touchmove',e=>{
+  if(!img) return;
+  e.preventDefault();
+  if(tstate.mode==='pan'&&e.touches.length===1){
+    pan={x:tstate.sp.x+e.touches[0].clientX-tstate.sx, y:tstate.sp.y+e.touches[0].clientY-tstate.sy};
+  } else if(tstate.mode==='pinch'&&e.touches.length===2){
+    const [a,b]=e.touches;
+    const d=Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY);
+    const nz=Math.min(10,Math.max(0.1,tstate.sz*(d/tstate.sd)));
+    const rect=cv.getBoundingClientRect();
+    const mx=tstate.mx-rect.left,my=tstate.my-rect.top;
+    pan={x:mx-((mx-tstate.sp.x)/tstate.sz)*nz, y:my-((my-tstate.sp.y)/tstate.sz)*nz};
+    zoom=nz;
+  }
+  updateCrosshair(); render();
+},{passive:false});
+cv.addEventListener('touchend',()=>{tstate.mode=null;});
+
+// mouse fallback for desktop testing
+let mdown=null;
+cv.addEventListener('mousedown',e=>{mdown={x:e.clientX-pan.x,y:e.clientY-pan.y};});
+cv.addEventListener('mousemove',e=>{ if(mdown){pan={x:e.clientX-mdown.x,y:e.clientY-mdown.y};updateCrosshair();render();} });
+cv.addEventListener('mouseup',()=>mdown=null);
+cv.addEventListener('wheel',e=>{
+  if(!img) return; e.preventDefault();
+  const rect=cv.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  const f=e.deltaY<0?1.15:1/1.15;
+  const nz=Math.min(10,Math.max(0.1,zoom*f));
+  pan={x:mx-((mx-pan.x)/zoom)*nz, y:my-((my-pan.y)/zoom)*nz};
+  zoom=nz; updateCrosshair(); render();
+},{passive:false});
+
+// ---- mark point ----
+$('markBtn').onclick=()=>{
+  if(!img||!tool||!crosshair) return;
+  const p={...crosshair};
+  if(tool==='erase'){
+    let best=-1,bd=30/zoom;
+    items.forEach((it,i)=>{
+      let d=Infinity;
+      if(it.type==='line') d=Math.min(dist(p,{x:it.x1,y:it.y1}),dist(p,{x:it.x2,y:it.y2}),dist(p,{x:(it.x1+it.x2)/2,y:(it.y1+it.y2)/2}));
+      else if(it.type==='text') d=dist(p,{x:it.x,y:it.y});
+      else if(it.type==='area') d=Math.min(...it.pts.map(q=>dist(p,q)));
+      if(d<bd){bd=d;best=i;}
+    });
+    if(best>=0){ pushHistory(); items.splice(best,1); setStatus('Deleted.'); render(); updateSummary(); }
+    else setStatus('Nothing near the crosshair. Aim closer.');
+    return;
+  }
+  if(tool==='text'){ textPt=p; $('textVal').value=''; $('textSheet').style.display='block'; $('textVal').focus(); return; }
+  if(tool==='calibrate'||tool==='line'){
+    if(pending.length===0){
+      pending=[p];
+      setStatus(tool==='calibrate'?'Now aim at the other end, tap Mark point.':'Aim at the end point, tap Mark point.');
+    } else {
+      const p1=pending[0];
+      if(tool==='calibrate'){
+        calibPts={p1,p2:p}; pending=[];
+        $('calibSheet').style.display='block';
+        $('calibUnit').value=unit;
+      } else {
+        const dp=dist(p1,p);
+        const label = scale ? fmt(dp*scale)+' '+unit : '';
+        pushHistory();
+        items.push({type:'line',x1:p1.x,y1:p1.y,x2:p.x,y2:p.y,label,color});
+        pending=[];
+        setStatus(scale?'Line: '+label:'Line added (no scale set).');
+        updateSummary();
+      }
+    }
+  } else if(tool==='area'){
+    pending.push(p);
+    setStatus(pending.length+' corner'+(pending.length>1?'s':'')+' marked. Tap ✓ Close when done (need 3+).');
+  }
+  updateActionButtons(); render();
+};
+
+$('closeBtn').onclick=()=>{
+  if(pending.length<3) return;
+  pushHistory();
+  let label='';
+  if(scale){
+    const f=PITCH_FACTORS[pitchSel.value];
+    const a=polyArea(pending)*scale*scale*f;
+    label = unit==='ft' ? fmt(a)+' sq ft ('+(a/100).toFixed(2)+' sq)' : fmt(a)+' '+unit+'²';
+    if(f>1) label+=' @ '+pitchSel.value;
+  }
+  items.push({type:'area',pts:pending,label,color});
+  pending=[];
+  setStatus(scale?'Section: '+label:'Section added (set scale for area).');
+  updateActionButtons(); render(); updateSummary();
+};
+$('lastBtn').onclick=()=>{ pending.pop(); updateActionButtons(); render(); };
+$('cancelBtn').onclick=()=>{ pending=[]; updateActionButtons(); render(); };
+
+// ---- calibration ----
+$('calibOk').onclick=()=>{
+  const v=parseFloat($('calibVal').value);
+  if(!v||!calibPts) return;
+  unit=$('calibUnit').value; $('unitSel').value=unit;
+  scale=v/dist(calibPts.p1,calibPts.p2);
+  items=items.map(it=>{
+    if(it.type==='line'){
+      const d=Math.hypot(it.x2-it.x1,it.y2-it.y1)*scale;
+      return {...it,label:fmt(d)+' '+unit};
+    }
+    if(it.type==='area'){
+      const f=PITCH_FACTORS[pitchSel.value];
+      const a=polyArea(it.pts)*scale*scale*f;
+      let label = unit==='ft'?fmt(a)+' sq ft ('+(a/100).toFixed(2)+' sq)':fmt(a)+' '+unit+'²';
+      if(f>1) label+=' @ '+pitchSel.value;
+      return {...it,label};
+    }
+    return it;
+  });
+  calibPts=null;
+  $('calibSheet').style.display='none';
+  $('scaleStatus').textContent='✓ scaled'; $('scaleStatus').style.color='#63B322';
+  setTool('line');
+  setStatus('Scale locked ✓ — draw lines or trace sections.');
+  render(); updateSummary();
+};
+$('calibCancel').onclick=()=>{ calibPts=null; $('calibSheet').style.display='none'; };
+
+// ---- text ----
+$('textOk').onclick=()=>{
+  const t=$('textVal').value.trim();
+  if(t&&textPt){ pushHistory(); items.push({type:'text',x:textPt.x,y:textPt.y,text:t,color}); }
+  textPt=null; $('textSheet').style.display='none'; render();
+};
+$('textCancel').onclick=()=>{ textPt=null; $('textSheet').style.display='none'; };
+$('textVal').addEventListener('keydown',e=>{if(e.key==='Enter')$('textOk').click();});
+$('calibVal').addEventListener('keydown',e=>{if(e.key==='Enter')$('calibOk').click();});
+
+// ---- summary ----
+function computeTotals(){
+  const lines=items.filter(i=>i.type==='line'&&i.label);
+  const areas=items.filter(i=>i.type==='area'&&i.label);
+  const tl = scale?lines.reduce((s,l)=>s+Math.hypot(l.x2-l.x1,l.y2-l.y1)*scale,0):0;
+  const f=PITCH_FACTORS[pitchSel.value];
+  const ta = scale?areas.reduce((s,a)=>s+polyArea(a.pts)*scale*scale*f,0):0;
+  return { lines, areas, linearTotal: tl, areaTotal: ta, pitchFactor: f };
+}
+
+function updateSummary(){
+  const g=$('summaryGrid');
+  const {lines,areas,linearTotal:tl,areaTotal:ta}=computeTotals();
+  let html='<div><div class="statlabel">Lines</div><div class="statval">'+lines.length+'</div></div>';
+  if(scale) html+='<div><div class="statlabel">Linear total</div><div class="statval">'+fmt(tl)+' '+unit+'</div></div>';
+  html+='<div><div class="statlabel">Sections</div><div class="statval">'+areas.length+'</div></div>';
+  if(scale){
+    html+='<div><div class="statlabel">Total area ('+pitchSel.value+')</div><div class="statval">'+fmt(ta)+' '+(unit==='ft'?'sq ft':unit+'²');
+    if(unit==='ft') html+='<div style="color:#E8833A;font-size:14px;">'+(ta/100).toFixed(2)+' squares</div>';
+    html+='</div></div>';
+  }
+  g.innerHTML=html;
+}
+
+// ---- export ----
+$('saveBtn').onclick=()=>{
+  if(!img) return;
+  const off=document.createElement('canvas');
+  off.width=imgW; off.height=imgH;
+  const c=off.getContext('2d');
+  c.drawImage(img,0,0);
+  const k=Math.max(1,imgW/1000);
+  const drawLabel=(text,x,y,clr)=>{
+    const fs=15*k;
+    c.font='bold '+fs+'px sans-serif';
+    const w=c.measureText(text).width;
+    c.fillStyle='rgba(0,0,0,0.75)';
+    c.fillRect(x-w/2-5,y-fs-4,w+10,fs+8);
+    c.fillStyle=clr==='#111111'?'#fff':clr;
+    c.fillText(text,x-w/2,y-3);
+  };
+  const lw=Math.max(3,imgW/400);
+  items.forEach(it=>{
+    if(it.type==='line'){
+      c.strokeStyle=it.color;c.lineWidth=lw;
+      c.beginPath();c.moveTo(it.x1,it.y1);c.lineTo(it.x2,it.y2);c.stroke();
+      c.fillStyle=it.color;
+      [[it.x1,it.y1],[it.x2,it.y2]].forEach(([x,y])=>{c.beginPath();c.arc(x,y,lw*1.4,0,Math.PI*2);c.fill();});
+      if(it.label) drawLabel(it.label,(it.x1+it.x2)/2,(it.y1+it.y2)/2-10,it.color);
+    } else if(it.type==='area'){
+      c.strokeStyle=it.color;c.lineWidth=lw;c.fillStyle=it.color+'33';
+      c.beginPath();
+      it.pts.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));
+      c.closePath();c.fill();c.stroke();
+      if(it.label){
+        const cx=it.pts.reduce((s,p)=>s+p.x,0)/it.pts.length;
+        const cy=it.pts.reduce((s,p)=>s+p.y,0)/it.pts.length;
+        drawLabel(it.label,cx,cy,it.color);
+      }
+    } else if(it.type==='text'){
+      const fs=18*k;
+      c.font='bold '+fs+'px sans-serif';
+      const w=c.measureText(it.text).width;
+      c.fillStyle='rgba(0,0,0,0.75)';
+      c.fillRect(it.x-4,it.y-fs,w+8,fs+6);
+      c.fillStyle=it.color==='#111111'?'#fff':it.color;
+      c.fillText(it.text,it.x,it.y);
+    }
+  });
+  const jn=$('jobName').value.trim();
+  if(jn){
+    const fs=Math.max(18,imgW/50);
+    c.font='bold '+fs+'px sans-serif';
+    const w=c.measureText(jn).width;
+    c.fillStyle='rgba(0,0,0,0.6)';
+    c.fillRect(12,12,w+24,fs+16);
+    c.fillStyle='#fff';
+    c.fillText(jn,24,12+fs+2);
+  }
+  const dataUrl = off.toDataURL('image/png');
+
+  if (EMBEDDED) {
+    const { lines, areas, linearTotal, areaTotal } = computeTotals();
+    window.parent.postMessage({
+      type: 'roof-measure:save',
+      dataUrl,
+      jobName: jn,
+      summary: {
+        unit,
+        pitch: pitchSel.value,
+        lineCount: lines.length,
+        areaCount: areas.length,
+        linearTotal,
+        areaTotal,
+        squares: unit === 'ft' ? areaTotal / 100 : null,
+      },
+    }, '*');
+    setStatus('Saved to job ✓');
+  } else {
+    const link=document.createElement('a');
+    link.download=(jn?jn.replace(/\s+/g,'-').toLowerCase():'roof-measurement')+'.png';
+    link.href=dataUrl;
+    link.click();
+  }
+};
+
+window.addEventListener('resize',render);
+render();
+</script>
+</body>
+</html>
