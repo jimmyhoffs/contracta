@@ -114,3 +114,7 @@ storeFile=/absolute/path/to/contractoor-upload.jks
 ```
 
 `src-tauri/gen/android/app/build.gradle.kts` already reads this file and wires it into the `release` build type's signing config.
+
+## License
+
+[MIT](LICENSE)
