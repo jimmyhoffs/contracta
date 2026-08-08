@@ -47,14 +47,47 @@ macOS/Windows need their platform's usual native toolchain (Xcode Command Line T
 
 ### Windows build
 
-Building on an actual Windows machine (or a Windows CI runner) is the normal path — install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#windows) there and run `npm run desktop:build`.
+Build on an actual Windows machine (or a Windows CI runner) — install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#windows) there and run `npm run desktop:build`.
 
-This repo is also set up to **cross-compile from Linux** for the cases where that's all you have:
+Cross-compiling for Windows from Linux via the mingw-w64 GNU target (`x86_64-pc-windows-gnu`) isn't supported here: `app_lib` needs to be built as a `cdylib` for the Android app below, and GNU `ld` overflows the PE export-table ordinal limit when linking a `cdylib` for that target (tens of thousands of transitively-exported symbols vs. a 65535 ordinal ceiling). The MSVC target doesn't have this problem — if you need to cross-compile from Linux, look at [`cargo-xwin`](https://github.com/rust-cross/cargo-xwin) for `x86_64-pc-windows-msvc` instead.
+
+## Android app
+
+The app also builds as a native Android APK via Tauri's Android support.
+
+First-time setup (Linux):
 
 ```bash
-rustup target add x86_64-pc-windows-gnu
-sudo apt install -y mingw-w64 nsis
-npm run desktop:build:windows
+# Android SDK command-line tools
+curl -sL -o /tmp/cmdline-tools.zip \
+  https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+mkdir -p ~/Android/Sdk/cmdline-tools
+unzip -q /tmp/cmdline-tools.zip -d ~/Android/Sdk/cmdline-tools
+mv ~/Android/Sdk/cmdline-tools/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
+export PATH="$HOME/Android/Sdk/cmdline-tools/latest/bin:$PATH"
+
+yes | sdkmanager --licenses
+sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;27.0.12077973"
+
+rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 ```
 
-`src-tauri/.cargo/config.toml` points cargo at the mingw-w64 linker for the `x86_64-pc-windows-gnu` target. This produces a real `app.exe` (`src-tauri/target/x86_64-pc-windows-gnu/release/app.exe`); wrapping it into a signed NSIS installer additionally needs a helper DLL that Tauri fetches from `tauri-apps/nsis-tauri-utils` on GitHub at build time — if that host isn't reachable from your build environment, you'll get a working `.exe` but the bundling step will fail, and you can distribute the raw `.exe` directly or run the same command somewhere with normal GitHub access to get the packaged installer.
+Set these before running any `android:*` script (add to your shell profile):
+
+```bash
+export ANDROID_HOME=~/Android/Sdk
+export NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64   # any JDK 17+ works
+```
+
+Then:
+
+```bash
+npm run android:init    # only if src-tauri/gen/android is missing — it's checked into git
+npm run android:dev     # launch on a connected device/emulator with hot reload
+npm run android:build   # debug APK in src-tauri/gen/android/app/build/outputs/apk/
+```
+
+`npm run android:build` builds all 4 ABIs into one ~450MB universal APK. For faster iteration on a real device, build just that device's arch, e.g. `npm run android:build -- --target aarch64` (~125MB, most phones/tablets since ~2018 are `aarch64`).
+
+It's a **debug** APK, unsigned and not optimized — fine for sideloading onto a test device. A real release build (signed, optimized, ready for the Play Store) needs a signing keystore, which isn't set up in this repo yet.
