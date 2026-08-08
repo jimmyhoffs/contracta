@@ -115,6 +115,25 @@ storeFile=/absolute/path/to/contractoor-upload.jks
 
 `src-tauri/gen/android/app/build.gradle.kts` already reads this file and wires it into the `release` build type's signing config.
 
+## F-Droid
+
+The Android app is also distributed as a self-hosted [F-Droid](https://f-droid.org)-compatible repo, published via GitHub Pages from the `gh-pages` branch:
+
+- Add in F-Droid: Settings → Repositories → **+** → `https://jimmyhoffs.github.io/contracta/repo` (fingerprint: `90613EE41A47606BB0DF896763B3B3E822E911BAB8F3D977FFF7C7DC55BD6487`)
+- Or just visit https://jimmyhoffs.github.io/contracta/ on a phone for a tap-to-add link, QR code, and a direct APK download for sideloading
+
+### Publishing a new version
+
+Requires [`fdroidserver`](https://f-droid.org/docs/Setup_an_F-Droid_App_Repo/) (`pip install fdroidserver` — the Ubuntu apt package is too old to parse modern Android Gradle Plugin output) and the repo signing keystore (`keystore.p12` + `config.yml`, generated once via `fdroid init` and **not** checked into git — back these up like any other signing key; losing them means the repo's identity can't be preserved across updates).
+
+```bash
+# from a directory containing config.yml, keystore.p12, metadata/, and repo/
+cp path/to/new-release.apk repo/
+fdroid update
+```
+
+Then commit the contents of `repo/` (and `index.html` / `add-repo-qr.png` if changed) to the `gh-pages` branch and push. GitHub Pages picks it up automatically; F-Droid clients already subscribed will see the update on their next repo refresh.
+
 ## License
 
 [MIT](LICENSE)
