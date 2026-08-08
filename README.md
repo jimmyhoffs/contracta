@@ -90,4 +90,27 @@ npm run android:build   # debug APK in src-tauri/gen/android/app/build/outputs/a
 
 `npm run android:build` builds all 4 ABIs into one ~450MB universal APK. For faster iteration on a real device, build just that device's arch, e.g. `npm run android:build -- --target aarch64` (~125MB, most phones/tablets since ~2018 are `aarch64`).
 
-It's a **debug** APK, unsigned and not optimized — fine for sideloading onto a test device. A real release build (signed, optimized, ready for the Play Store) needs a signing keystore, which isn't set up in this repo yet.
+It's a **debug** APK, unsigned and not optimized — fine for sideloading onto a test device.
+
+### Release build
+
+`npm run android:release` produces a signed, minified APK (for sideloading) and AAB (for Play Store submission) in `src-tauri/gen/android/app/build/outputs/`.
+
+This needs a signing keystore, which is **not** checked into git (losing it means future updates can't be signed with the same identity, and a Play Store listing tied to it can never be updated again — back it up somewhere durable, like a password manager).
+
+First-time setup:
+
+```bash
+keytool -genkeypair -v -keystore ~/.android-keystores/contractoor-upload.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
+Then create `src-tauri/gen/android/keystore.properties` (gitignored):
+
+```properties
+password=<your-password>
+keyAlias=upload
+storeFile=/absolute/path/to/contractoor-upload.jks
+```
+
+`src-tauri/gen/android/app/build.gradle.kts` already reads this file and wires it into the `release` build type's signing config.
