@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Screen from '../../components/Screen.jsx';
 import { useClipboardMatch, matchAddress } from '../../hooks/useClipboardMatch.js';
+import { openExternal } from '../../utils/openExternal.js';
 
 export default function StepAddress({ draft, patchCustomer, next, back }) {
   const existing = draft.customer.address;
@@ -24,7 +25,7 @@ export default function StepAddress({ draft, patchCustomer, next, back }) {
   };
 
   const openMaps = (addr) => {
-    window.open(`https://maps.google.com/?q=${encodeURIComponent(addr)}`, '_blank', 'noopener');
+    openExternal(`https://maps.google.com/?q=${encodeURIComponent(addr)}`);
   };
 
   const showFound = checked && found && !editing && !existing;

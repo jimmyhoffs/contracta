@@ -4,6 +4,7 @@ import Screen from '../components/Screen.jsx';
 import StageTracker from '../components/StageTracker.jsx';
 import HereCard from '../components/HereCard.jsx';
 import { getJob, getCustomer, setStage } from '../repo.js';
+import { openExternal } from '../utils/openExternal.js';
 
 const FEATURES = [
   { key: 'photos', emoji: '📷', label: 'Photos' },
@@ -51,13 +52,13 @@ export default function JobDashboard() {
 
   const handleFeature = (key) => {
     if (key === 'contact') {
-      if (customer.phone) window.location.href = `tel:${customer.phone}`;
+      if (customer.phone) openExternal(`tel:${customer.phone}`);
       else alert('No phone number on file.');
       return;
     }
     if (key === 'navigate') {
       if (customer.address) {
-        window.open(`https://maps.google.com/?q=${encodeURIComponent(customer.address)}`, '_blank', 'noopener');
+        openExternal(`https://maps.google.com/?q=${encodeURIComponent(customer.address)}`);
       } else {
         alert('No address on file.');
       }
